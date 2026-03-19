@@ -1,0 +1,7 @@
+router/*.d
+router/*.o
+router/sr
+HWINFOS_TEMP
+pox.log
+sr.log
+.env
