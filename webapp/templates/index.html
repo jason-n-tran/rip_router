@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWOSPF Router Lab - Comprehensive Dashboard</title>
+    <!-- Xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --t-bg: #1e1e1e;
+            --accent: #bb86fc;
+            --text: #e0e0e0;
+            --success: #03dac6;
+            --error: #cf6679;
+            --link-up: #03dac6;
+            --link-down: #cf6679;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 400px;
+            background-color: var(--t-bg);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        h2,
+        h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent);
+        }
+
+        .panel {
+            background: #2c2c2c;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        /* Controls */
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        select,
+        button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            background: #383838;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-danger {
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        .btn-success {
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        /* Topology SVG */
+        .topology-container {
+            flex: 1;
+            background: #1a1a1a;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            min-height: 300px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node {
+            fill: #444;
+            stroke: #fff;
+            stroke-width: 2;
+        }
+
+        .node-text {
+            fill: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+
+        .link {
+            stroke: var(--link-up);
+            stroke-width: 4;
+            transition: stroke 0.3s;
+        }
+
+        .link.down {
+            stroke: var(--link-down);
+            stroke-dasharray: 5, 5;
+        }
+
+        /* Terminal */
+        .terminal-container {
+            height: 40%;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div>
+            <h2>Controls</h2>
+            <div class="panel">
+                <label>Source Node</label>
+                <select id="srcNode">
+                    <option value="client">Client</option>
+                    <option value="server1">Server 1</option>
+                    <option value="server2">Server 2</option>
+                </select>
+
+                <label>Destination</label>
+                <select id="dstNode">
+                    <optgroup label="Hosts">
+                        <option value="192.168.2.200">Server 1 (192.168.2.200)</option>
+                        <option value="172.24.3.30">Server 2 (172.24.3.30)</option>
+                        <option value="10.0.1.100">Client (10.0.1.100)</option>
+                    </optgroup>
+                    <optgroup label="Router 1 Interfaces">
+                        <option value="10.0.1.1">R1 Eth1 (Client-side)</option>
+                        <option value="10.0.2.1">R1 Eth2 (R2-side)</option>
+                        <option value="10.0.3.1">R1 Eth3 (R3-side)</option>
+                    </optgroup>
+                    <optgroup label="Router 2 Interfaces">
+                        <option value="192.168.2.2">R2 Eth2 (S1-side)</option>
+                        <option value="10.0.2.2">R2 Eth1 (R1-side)</option>
+                        <option value="192.168.3.1">R2 Eth3 (R3-side)</option>
+                    </optgroup>
+                    <optgroup label="Router 3 Interfaces">
+                        <option value="172.24.3.2">R3 Eth2 (S2-side)</option>
+                        <option value="10.0.3.2">R3 Eth1 (R1-side)</option>
+                        <option value="192.168.3.2">R3 Eth3 (R2-side)</option>
+                    </optgroup>
+                </select>
+
+                <div class="btn-row">
+                    <button onclick="sendTraffic('ping -c 3')">Ping</button>
+                    <button onclick="sendTraffic('traceroute -n')">Trace</button>
+                    <button onclick="sendTraffic('wget -O - -T 5 http://')">Wget (HTTP)</button>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3>Link Management</h3>
+            <div class="panel">
+                <label>Router 1 <-> Router 2 (vhost1-eth2)</label>
+                <div class="btn-row">
+                    <button class="btn-danger"
+                        onclick="toggleLink('vhost1', 'vhost1-eth2', 'down', 'link-r1-r2')">Block</button>
+                    <button class="btn-success"
+                        onclick="toggleLink('vhost1', 'vhost1-eth2', 'up', 'link-r1-r2')">Recover</button>
+                </div>
+
+                <label>Router 2 <-> Router 3 (vhost2-eth3)</label>
+                <div class="btn-row">
+                    <button class="btn-danger"
+                        onclick="toggleLink('vhost2', 'vhost2-eth3', 'down', 'link-r2-r3')">Block</button>
+                    <button class="btn-success"
+                        onclick="toggleLink('vhost2', 'vhost2-eth3', 'up', 'link-r2-r3')">Recover</button>
+                </div>
+
+                <label>Router 1 <-> Router 3 (vhost1-eth3)</label>
+                <div class="btn-row">
+                    <button class="btn-danger"
+                        onclick="toggleLink('vhost1', 'vhost1-eth3', 'down', 'link-r1-r3')">Block</button>
+                    <button class="btn-success"
+                        onclick="toggleLink('vhost1', 'vhost1-eth3', 'up', 'link-r1-r3')">Recover</button>
+                </div>
+
+                <label>Client <-> Router 1 (vhost1-eth1)</label>
+                <div class="btn-row">
+                    <button class="btn-danger"
+                        onclick="toggleLink('vhost1', 'vhost1-eth1', 'down', 'link-c-r1')">Block</button>
+                    <button class="btn-success"
+                        onclick="toggleLink('vhost1', 'vhost1-eth1', 'up', 'link-c-r1')">Recover</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <button onclick="runCommand('nodes')" class="secondary">Show Nodes</button>
+            <button onclick="runCommand('net')" class="secondary">Show Links</button>
+            <button onclick="runCommand('help')" class="secondary">Help</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="topology-container">
+            <svg viewBox="0 0 800 500">
+                <!-- Links -->
+                <!-- R1 (400, 350) to R2 (200, 200) -->
+                <line id="link-r1-r2" x1="400" y1="350" x2="200" y2="200" class="link" />
+                <!-- R1 (400, 350) to R3 (600, 200) -->
+                <line id="link-r1-r3" x1="400" y1="350" x2="600" y2="200" class="link" />
+                <!-- R2 (200, 200) to R3 (600, 200) -->
+                <line id="link-r2-r3" x1="200" y1="200" x2="600" y2="200" class="link" />
+
+                <!-- Client (400, 450) to R1 -->
+                <line id="link-c-r1" x1="400" y1="450" x2="400" y2="350" class="link" />
+                <!-- S1 (100, 100) to R2 -->
+                <line id="link-s1-r2" x1="100" y1="100" x2="200" y2="200" class="link" />
+                <!-- S2 (700, 100) to R3 -->
+                <line id="link-s2-r3" x1="700" y1="100" x2="600" y2="200" class="link" />
+
+                <!-- Nodes -->
+                <!-- Router 1 -->
+                <circle cx="400" cy="350" r="30" class="node" />
+                <text x="400" y="350" class="node-text">R1</text>
+                <!-- Router 2 -->
+                <circle cx="200" cy="200" r="30" class="node" />
+                <text x="200" y="200" class="node-text">R2</text>
+                <!-- Router 3 -->
+                <circle cx="600" cy="200" r="30" class="node" />
+                <text x="600" y="200" class="node-text">R3</text>
+
+                <!-- Client -->
+                <rect x="370" y="440" width="60" height="40" rx="5" class="node" />
+                <text x="400" y="460" class="node-text">Client</text>
+
+                <!-- Server 1 -->
+                <rect x="70" y="80" width="60" height="40" rx="5" class="node" />
+                <text x="100" y="100" class="node-text">S1</text>
+
+                <!-- Server 2 -->
+                <rect x="670" y="80" width="60" height="40" rx="5" class="node" />
+                <text x="700" y="100" class="node-text">S2</text>
+            </svg>
+        </div>
+
+        <div class="terminal-container">
+            <div id="terminal" style="height: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <script>
+        // Terminal Setup
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: { background: '#1e1e1e', foreground: '#ffffff' },
+            fontFamily: 'Menlo, monospace',
+            fontSize: 14
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+
+        // SocketIO
+        const socket = io();
+        socket.on('connect', () => { term.write('\r\n\x1b[32mSystem Connected.\x1b[0m\r\n'); });
+        socket.on('term_output', (data) => { term.write(data.output); });
+        term.onData((data) => { socket.emit('term_input', { input: data }); });
+
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+            socket.emit('resize', { cols: term.cols, rows: term.rows });
+        });
+        setTimeout(() => { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); }, 100);
+
+        // Command Helper
+        window.runCommand = function (cmd) {
+            socket.emit('term_input', { input: cmd + '\n' });
+            term.focus();
+        };
+
+        // Custom Traffic Sender
+        window.sendTraffic = function (type) {
+            const src = document.getElementById('srcNode').value;
+            const dst = document.getElementById('dstNode').value;
+            // Handle Wget special case using http prefix
+            let cmd = '';
+            if (type.includes('wget')) {
+                cmd = `${src} ${type}${dst}`;
+            } else {
+                cmd = `${src} ${type} ${dst}`;
+            }
+            runCommand(cmd);
+        };
+
+        // Link Toggler
+        window.toggleLink = function (node, intf, state, linkId) {
+            const cmd = `${node} ifconfig ${intf} ${state}`;
+            runCommand(cmd);
+
+            // Visual Update
+            const link = document.getElementById(linkId);
+            if (link) {
+                if (state === 'down') {
+                    link.classList.add('down');
+                } else {
+                    link.classList.remove('down');
+                }
+            }
+        };
+    </script>
+</body>
+
+</html>

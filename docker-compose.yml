@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  rip_router:
+    build: .
+    image: rip_router:latest
+    container_name: rip_router_demo
+    # CRITICAL: Mininet requires privileged mode to create virtual network namespaces
+    privileged: true
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
