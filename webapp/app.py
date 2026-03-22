@@ -16,13 +16,21 @@ import threading
 import time
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
 
-# Store the file descriptor for the master end of the pseudo-terminal
+allowed_origins_env = os.environ.get('ALLOWED_ORIGINS', None)
+if allowed_origins_env:
+    allowed_origins = allowed_origins_env.split(',')
+    print(f"CORS: Restricting to specific origins: {allowed_origins}")
+else:
+    allowed_origins = "*"
+    print("CORS: Allowing all origins (development mode)")
+
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode='eventlet')
+
 fd_master = None
 proc = None
-output_buffer = [] # Store output history
+output_buffer = []
 
 def set_winsize(fd, row, col, xpix=0, ypix=0):
     winsize = struct.pack("HHHH", row, col, xpix, ypix)
@@ -36,34 +44,26 @@ def start_mininet():
     global fd_master, proc
     if fd_master is None:
         print("Spawning Mininet CLI immediately...")
-        # Create a pseudo-terminal pair
         (master, slave) = pty.openpty()
         fd_master = master
         
-        # Start the Mininet CLI process
-        # We use python2 explicitly as required by Mininet
-        # Use -u for unbuffered output to ensure we see it immediately
         cmd = "python2 -u demo.py"
         
-        # Spawn the process
         proc = subprocess.Popen(
             shlex.split(cmd),
             stdin=slave,
             stdout=slave,
             stderr=slave,
-            cwd="/app", # Ensure CWD is correct for topo.py
+            cwd="/app",
             close_fds=True
         )
         print(f"Started process {proc.pid}")
         
-        # Start a background task managed by SocketIO/Eventlet
         socketio.start_background_task(target=read_and_forward_pty_output, fd=fd_master, socket_io_instance=socketio)
 
 @socketio.on('connect')
 def handle_connect():
-    # When a client connects, they just attach to the existing stream via the global fd_master
     print("Client connected attached to existing session")
-    # Emit buffered history so the user sees what happened
     global output_buffer
     if output_buffer:
         emit('term_output', {'output': "".join(output_buffer)})
@@ -74,18 +74,15 @@ def read_and_forward_pty_output(fd, socket_io_instance):
     max_read_bytes = 1024 * 20
     print("Reading thread started")
     while True:
-        socket_io_instance.sleep(0.01) # Yield to eventlet loop
+        socket_io_instance.sleep(0.01)
         if fd:
             try:
-                # Use os.read which is blocking, but with eventlet it should be fine if patched
-                # However, for safety in PTY reading with select to avoid blocking forever if no data
                 (r, w, x) = select.select([fd], [], [], 0.1)
                 if fd in r:
                     output = os.read(fd, max_read_bytes).decode(errors='ignore')
                     if output:
-                        # Append to buffer (limit size if needed, e.g., last 100KB)
                         output_buffer.append(output)
-                        if len(output_buffer) > 1000: # Simple cleanup to prevent unbounded growth
+                        if len(output_buffer) > 1000:
                              output_buffer = output_buffer[-1000:]
                         
                         socket_io_instance.emit('term_output', {'output': output})
@@ -94,20 +91,28 @@ def read_and_forward_pty_output(fd, socket_io_instance):
                 break
 
 
+
 @socketio.on('term_input')
 def handle_term_input(data):
     global fd_master
     if fd_master:
-        os.write(fd_master, data['input'].encode())
+        user_input = data.get('input', '')
+        if len(user_input) > 1024:
+            print(f"SECURITY: Input too large: {len(user_input)} bytes")
+            return
+        
+        if user_input.strip():
+            print(f"AUDIT: User input: {repr(user_input[:100])}")  # Log first 100 chars
+        
+        os.write(fd_master, user_input.encode())
 
 @socketio.on('resize')
 def handle_resize(data):
     if fd_master:
-        set_winsize(fd_master, data['rows'], data['cols'])
+        rows = min(int(data.get('rows', 24)), 200)
+        cols = min(int(data.get('cols', 80)), 200)
+        set_winsize(fd_master, rows, cols)
 
 if __name__ == '__main__':
-    # Start Mininet before the web server starts accepting connections
     start_mininet()
-    # We use eventlet/gevent for production usually, but for dev this is fine.
-    # Host 0.0.0.0 is crucial for Docker.
-    socketio.run(app, host='0.0.0.0', port=8080, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=8060, allow_unsafe_werkzeug=True)

@@ -5,10 +5,48 @@ services:
     build: .
     image: rip_router:latest
     container_name: rip_router_demo
-    # CRITICAL: Mininet requires privileged mode to create virtual network namespaces
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+      - SYS_ADMIN
+      - NET_BIND_SERVICE
+    cap_drop:
+      - ALL
+
     privileged: true
+    read_only: false
+    tmpfs:
+      - /tmp
+      - /run
+    volumes:
+      - .:/app
+      - /lib/modules:/lib/modules
+      - ovs-data:/var/lib/openvswitch
+      - ovs-run:/var/run/openvswitch
+      - ovs-logs:/var/log/openvswitch
+      - ovs-etc:/etc/openvswitch
+      
     ports:
-      - "8080:8080"
-    restart: always
+      - "8060:8060"
+    restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8060/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+    # Fix CRLF issues from bind mount (Windows host) before running
+    entrypoint: /bin/bash -c "dos2unix entrypoint.sh && chmod +x entrypoint.sh && ./entrypoint.sh"
+
+volumes:
+  ovs-data:
+  ovs-run:
+  ovs-logs:
+  ovs-etc:

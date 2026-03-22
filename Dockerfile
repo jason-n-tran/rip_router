@@ -45,7 +45,7 @@ COPY . /app
 RUN cd router && make
 
 # Expose Web Port
-EXPOSE 8080
+EXPOSE 8060
 
 RUN dos2unix entrypoint.sh grader.py
 RUN chmod +x entrypoint.sh grader.py

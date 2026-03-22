@@ -372,7 +372,8 @@ def net():
     starthttp( server1 )
     starthttp( server2 )
     #run_tests(net)
-    CLI(net)
+    from restricted_cli import RestrictedCLI
+    RestrictedCLI( net )
     stophttp()
     net.stop()
 

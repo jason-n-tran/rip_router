@@ -7,6 +7,13 @@ export PYTHONPATH=$PYTHONPATH:/app:/app/pox_module
 # Start OpenVSwitch service
 service openvswitch-switch start
 
+# Fix permissions
+chmod +x pox/pox.py
+
+# Rebuild router in case it's missing (volume mount overwrite)
+echo "Building router..."
+cd router && make && cd ..
+
 # 1. Start POX controller
 echo "Starting POX..."
 export PYTHONPATH=$PYTHONPATH:$(pwd)/pox_module
@@ -55,7 +62,7 @@ mn -c > /dev/null 2>&1
 
 # Run Topo in foreground via Web App
 # The Web App (app.py) will spawn 'python2 topo.py' inside a PTY.
-echo "Starting Web Interface on port 8080..."
+echo "Starting Web Interface on port 8060..."
 
 # We use python3 for the Flask app
 # The Flask app will be the "foreground" process keeping the container alive.

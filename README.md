@@ -348,7 +348,7 @@ cd c:\Users\thism\sysdev\rip_router_test
 docker build -t rip_router:latest .
 
 # Run container with privileged mode (required for Mininet)
-docker run -it --privileged -p 8080:8080 rip_router:latest
+docker run -it --privileged -p 8060:8060 rip_router:latest
 ```
 
 **Using Docker Compose:**
@@ -362,9 +362,9 @@ The container will automatically:
 3. Initialize Mininet network topology
 4. Compile and start 3 router instances (vhost1, vhost2, vhost3)
 5. Start HTTP test servers
-6. Launch web dashboard on port 8080
+6. Launch web dashboard on port 8060
 
-Access the dashboard at: **http://localhost:8080**
+Access the dashboard at: **http://localhost:8060**
 
 #### Option 2: Native Installation (Linux Only)
 
@@ -408,7 +408,7 @@ cd webapp
 python3 app.py
 ```
 
-Access the dashboard at: **http://localhost:8080**
+Access the dashboard at: **http://localhost:8060**
 
 ---
 
@@ -428,14 +428,14 @@ Access the dashboard at: **http://localhost:8080**
    On Linux/Mac:
    ```bash
    docker build -t pwospf-router:latest .
-   docker run -it --privileged -p 8080:8080 pwospf-router:latest
+   docker run -it --privileged -p 8060:8060 pwospf-router:latest
    ```
 
 2. **Access the Web Dashboard**:
 
-   Once the container starts and you see the message `Listening on http://0.0.0.0:8080`, open your web browser and navigate to:
+   Once the container starts and you see the message `Listening on http://0.0.0.0:8060`, open your web browser and navigate to:
    ```
-   http://localhost:8080
+   http://localhost:8060
    ```
 
 3. **Explore the Dashboard**:
@@ -463,7 +463,7 @@ The `entrypoint.sh` script orchestrates:
 3. Starting the Mininet network topology (in background)
 4. Starting 3 router instances after 10-second warmup
 5. Running the Flask web dashboard
-6. Exposing the dashboard on port 8080
+6. Exposing the dashboard on port 8060
 
 ### Native Installation (Advanced)
 
@@ -561,7 +561,7 @@ cd webapp
 python3 app.py
 ```
 
-The Flask server will start on `http://localhost:8080` by default.
+The Flask server will start on `http://localhost:8060` by default.
 
 ### Interactive Web Dashboard Features
 
@@ -915,8 +915,8 @@ docker run -it --privileged pwospf-router:latest bash
 #### Port Already in Use
 
 ```bash
-# If port 8080 is in use, try a different port:
-docker run -it --privileged -p 8888:8080 pwospf-router:latest
+# If port 8060 is in use, try a different port:
+docker run -it --privileged -p 8888:8060 pwospf-router:latest
 # Then access: http://localhost:8888
 ```
 
@@ -936,7 +936,7 @@ docker run -it --privileged -p 8888:8080 pwospf-router:latest
    ps aux | grep flask
    ```
 
-2. Check firewall isn't blocking port 8080
+2. Check firewall isn't blocking port 8060
    ```bash
    # Windows: Check Windows Defender Firewall
    # Mac: Check System Preferences > Security & Privacy
@@ -945,8 +945,8 @@ docker run -it --privileged -p 8888:8080 pwospf-router:latest
 
 3. Try accessing from different browser
    ```
-   http://localhost:8080
-   http://127.0.0.1:8080
+   http://localhost:8060
+   http://127.0.0.1:8060
    ```
 
 #### Topology Not Showing
