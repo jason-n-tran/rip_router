@@ -110,15 +110,29 @@ class RestrictedCLI(CLI):
                         
             # SECURITY: Block data exfiltration and dangerous flags
             if cmd_name == 'wget':
-                forbidden = ['-O', '--output-document', '-o', '--output-file', 
+                forbidden = ['--output-document', '--output-file', 
                              '--append-output', '--config', '--post-file', '--post-data']
                 for arg in cmd_args:
                     if any(arg == f or arg.startswith(f + '=') or (f.startswith('--') and arg.startswith(f)) for f in forbidden):
                          error("Secure Mode: Wget flag '%s' is blocked.\n" % arg)
                          return
-                    if arg.startswith('-O') or arg.startswith('-o'):
-                         error("Secure Mode: Wget output flags are blocked.\n")
-                         return
+                for arg in cmd_args:
+                    if arg == '-O' or arg == '-o':
+                        idx = cmd_args.index(arg)
+                        if idx + 1 < len(cmd_args):
+                            next_arg = cmd_args[idx + 1]
+                            if next_arg != '-':
+                                error("Secure Mode: Wget output to file '%s' is blocked.\n" % next_arg)
+                                return
+                        else:
+                            error("Secure Mode: -O/-o requires an argument.\n")
+                            return
+                    elif arg.startswith('-O') or arg.startswith('-o'):
+                        if arg in ['-O-', '-o-']:
+                            continue  # Allow -O- and -o- (stdout)
+                        else:
+                            error("Secure Mode: Wget output to file is blocked.\n")
+                            return
                          
             elif cmd_name == 'curl':
                 forbidden = ['-o', '--output', '-O', '--remote-name', '-D', '--dump-header', 

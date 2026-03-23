@@ -1,5 +1,6 @@
 # PWOSPF Router with Interactive Network Simulation
 
+[![Live Demo](https://img.shields.io/badge/Demo-Live_Preview-0078D4?logo=google-chrome&logoColor=white)](http://riprouter-riprouter-brihrv-9b3c8e-72-61-1-6.traefik.me)
 ![License](https://img.shields.io/badge/license-GPL--3.0-green)
 ![Language](https://img.shields.io/badge/language-C-blue)
 ![Framework](https://img.shields.io/badge/framework-Python-yellow)
